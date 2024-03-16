@@ -1,0 +1,3 @@
+Manifest-Version: 1.0
+Main-Class: app.Chat
+Class-Path: libs/amqp-client-5.20.0.jar libs/slf4j-api-1.7.36.jar libs/slf4j-simple-1.7.36.jar
