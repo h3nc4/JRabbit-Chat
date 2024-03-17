@@ -22,6 +22,8 @@ package services;
 import com.rabbitmq.client.*;
 import java.io.IOException;
 import java.util.concurrent.TimeoutException;
+import java.util.Collections;
+import java.util.UUID;
 import app.Chat;
 
 /**
@@ -34,6 +36,8 @@ public class MessageService {
     private final Channel sendChannel;
     /** The channel to receive messages. */
     private final Channel receiveChannel;
+    /** The id of the sender. */
+    private final String senderId;
 
     /**
      * Initializes the connection to the RabbitMQ server and the channels to send
@@ -49,6 +53,7 @@ public class MessageService {
         connection = factory.newConnection();
         sendChannel = connection.createChannel();
         receiveChannel = connection.createChannel();
+        senderId = UUID.randomUUID().toString();
         sendChannel.exchangeDeclare(Chat.EXCHANGE_NAME, BuiltinExchangeType.TOPIC, true);
     }
 
@@ -59,7 +64,9 @@ public class MessageService {
      * @throws IOException If an error occurs while sending the message.
      */
     public void sendMessage(String message) throws IOException {
-        sendChannel.basicPublish(Chat.EXCHANGE_NAME, "", null, message.getBytes("UTF-8"));
+        sendChannel.basicPublish(Chat.EXCHANGE_NAME, "",
+                new AMQP.BasicProperties.Builder().headers(Collections.singletonMap("SenderId", senderId)).build(),
+                message.getBytes("UTF-8"));
     }
 
     /**
@@ -74,7 +81,8 @@ public class MessageService {
             @Override
             public void handleDelivery(String consumerTag, Envelope envelope, AMQP.BasicProperties properties,
                     byte[] body) throws IOException {
-                System.out.printf("\nReceived: %s\nEnter message: ", new String(body, "UTF-8"));
+                if (!senderId.equals(properties.getHeaders().get("SenderId").toString()))
+                    System.out.printf("\nReceived: %s\nEnter message: ", new String(body, "UTF-8"));
             }
         };
         receiveChannel.basicConsume(queueName, true, consumer);
