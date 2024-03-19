@@ -27,10 +27,6 @@ import services.MessageService;
  * Application to call the message service.
  */
 public class Chat {
-    /** The host of the RabbitMQ server. */
-    public static String HOST = "localhost";
-    /** The name of the exchange. */
-    public static String EXCHANGE_NAME;
     /** The maximum number of retries. */
     private static int maxretries = 5;
     /** The message service. */
@@ -39,12 +35,15 @@ public class Chat {
     /**
      * Initializes the message service.
      *
+     * @param host The host of the RabbitMQ server.
+     * @param room The room to send and receive messages.
+     * @param name The users name.
      * @throws IOException      If an error occurs while creating the connection or
      *                          the channels.
      * @throws TimeoutException If the connection times out.
      */
-    public Chat() throws IOException, TimeoutException {
-        service = new MessageService();
+    public Chat(String host, String room, String name) throws IOException, TimeoutException {
+        service = new MessageService(host, room, name);
     }
 
     /**
@@ -74,16 +73,14 @@ public class Chat {
      */
     public static void main(String[] args) {
         System.out.println("Welcome to the Chat application");
-        if (args.length > 2) {
-            System.out.println("Usage: Chat [host] [room]");
+        if (args.length < 3) {
+            System.out.println("Usage: Chat [host] [room] [name]");
             System.exit(1);
         }
-        HOST = args.length > 0 ? args[0] : Utils.readStr("Enter the RabbitMQ server host: ");
-        EXCHANGE_NAME = args.length > 1 ? args[1] : Utils.readStr("Enter your rooms name: ");
         Chat app = null;
         while (app == null) {
             try {
-                app = new Chat();
+                app = new Chat(args[0], args[1], args[2]);
                 app.run();
             } catch (IOException | InterruptedException | TimeoutException e) {
                 System.out.println("Error while sending or receiving a message");
@@ -92,7 +89,7 @@ public class Chat {
                     Thread.sleep(1000);
                     app.service.close();
                 } catch (IOException | TimeoutException | InterruptedException | NullPointerException e) {
-                    e.printStackTrace();
+                    System.out.println("Error while closing connection");
                 }
             }
             app = null;

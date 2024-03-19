@@ -24,7 +24,6 @@ import java.io.IOException;
 import java.util.concurrent.TimeoutException;
 import java.util.Collections;
 import java.util.UUID;
-import app.Chat;
 
 /**
  * Class to send and receive messages using RabbitMQ.
@@ -38,23 +37,32 @@ public class MessageService {
     private final Channel receiveChannel;
     /** The id of the sender. */
     private final String senderId;
+    /** The room to send and receive messages. */
+    private final String exchange;
+    /** The users name. */
+    private final String username;
 
     /**
      * Initializes the connection to the RabbitMQ server and the channels to send
      * and receive messages.
      *
+     * @param host     The host of the RabbitMQ server.
+     * @param exchange The room to send and receive messages.
+     * @param username The users name.
      * @throws IOException      If an error occurs while creating the connection or
      *                          the channels.
      * @throws TimeoutException If the connection times out.
      */
-    public MessageService() throws IOException, TimeoutException {
+    public MessageService(String host, String exchange, String username) throws IOException, TimeoutException {
         ConnectionFactory factory = new ConnectionFactory();
-        factory.setHost(Chat.HOST);
+        factory.setHost(host);
         connection = factory.newConnection();
         sendChannel = connection.createChannel();
         receiveChannel = connection.createChannel();
         senderId = UUID.randomUUID().toString();
-        sendChannel.exchangeDeclare(Chat.EXCHANGE_NAME, BuiltinExchangeType.TOPIC, true);
+        this.exchange = exchange;
+        this.username = username;
+        sendChannel.exchangeDeclare(exchange, BuiltinExchangeType.TOPIC, true);
     }
 
     /**
@@ -64,9 +72,9 @@ public class MessageService {
      * @throws IOException If an error occurs while sending the message.
      */
     public void sendMessage(String message) throws IOException {
-        sendChannel.basicPublish(Chat.EXCHANGE_NAME, "",
+        sendChannel.basicPublish(exchange, "",
                 new AMQP.BasicProperties.Builder().headers(Collections.singletonMap("SenderId", senderId)).build(),
-                message.getBytes("UTF-8"));
+                String.format("%s: %s", username, message).getBytes("UTF-8"));
     }
 
     /**
@@ -76,13 +84,12 @@ public class MessageService {
      */
     public void receiveMessage() throws IOException {
         String queueName = receiveChannel.queueDeclare().getQueue();
-        receiveChannel.queueBind(queueName, Chat.EXCHANGE_NAME, "");
+        receiveChannel.queueBind(queueName, exchange, "");
         DefaultConsumer consumer = new DefaultConsumer(receiveChannel) {
             @Override
-            public void handleDelivery(String consumerTag, Envelope envelope, AMQP.BasicProperties properties,
-                    byte[] body) throws IOException {
+            public void handleDelivery(String consumerTag, Envelope envelope, AMQP.BasicProperties properties, byte[] body) throws IOException {
                 if (!senderId.equals(properties.getHeaders().get("SenderId").toString()))
-                    System.out.printf("\nReceived: %s\nEnter message: ", new String(body, "UTF-8"));
+                    System.out.printf("\n%s\nEnter message: ", new String(body, "UTF-8"));
             }
         };
         receiveChannel.basicConsume(queueName, true, consumer);
