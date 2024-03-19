@@ -1,0 +1,31 @@
+name: Deploy Javadoc
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Create Javadoc branch
+      run: |
+        git branch -D gh-pages || true
+        git checkout -b gh-pages
+
+    - name: Generate Javadoc
+      run: javadoc -private -d docs -sourcepath src/ -subpackages app services -classpath libs/amqp-client-5.20.0.jar:libs/slf4j-api-1.7.36.jar:libs/slf4j-simple-1.7.36.jar
+
+    - name: Deploy
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./docs
+        force_orphan: true
+        user_name: 'github-actions[bot]'
+        user_email: 'github-actions[bot]@users.noreply.github.com'

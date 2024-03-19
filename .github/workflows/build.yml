@@ -1,0 +1,33 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up JDK
+      uses: actions/setup-java@v4
+      with:
+        java-version: '21'
+        distribution: 'temurin'
+
+    - name: Compile Java code
+      run: javac -cp .:libs/amqp-client-5.20.0.jar:libs/slf4j-api-1.7.36.jar:libs/slf4j-simple-1.7.36.jar -d bin src/**/*.java 
+
+    - name: Create JAR
+      run: jar cfm release.jar MANIFEST.MF -C bin/ app -C bin/ services README.md LICENSE libs
+
+    - name: Upload JAR
+      uses: actions/upload-artifact@v4
+      with:
+        name: release-jar
+        path: release.jar
+        compression-level: 0

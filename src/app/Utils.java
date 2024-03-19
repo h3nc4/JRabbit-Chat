@@ -23,6 +23,7 @@ package app;
  * Utils for the Chat application
  */
 public class Utils {
+    /** Maximum number of retries on console read */
     private static int maxretries = 5;
 
     /**
